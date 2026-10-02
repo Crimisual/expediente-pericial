@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIGINT & OSINT // EXPEDIENTE PERICIAL CLASIFICADO</title>
+  <style>
+    :root {
+      --bg: #030611;
+      --panel: #060b19;
+      --card: rgba(10, 18, 36, 0.88);
+      --red: #ff2a5f;
+      --red-glow: rgba(255, 42, 95, 0.45);
+      --cyan: #00f2fe;
+      --cyan-glow: rgba(0, 242, 254, 0.35);
+      --amber: #f59e0b;
+      --green: #10b981;
+      --border: rgba(0, 242, 254, 0.22);
+      --border-red: rgba(255, 42, 95, 0.4);
+      --text: #f1f5f9;
+      --muted: #8ea2c0;
+      --font-mono: "SF Mono", "Consolas", "Courier New", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* FONDO DE RED DE INTELIGENCIA */
+    #sigint-bg {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.45;
+    }
+
+    /* LÍNEA DE ESCANEO DE PANTALLA TÁCTICA */
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.35) 50%);
+      background-size: 100% 4px;
+      z-index: 999;
+      pointer-events: none;
+      opacity: 0.25;
+    }
+
+    /* BARRA LATERAL TÁCTICA */
+    aside.sidebar {
+      width: 330px;
+      background: rgba(6, 11, 25, 0.94);
+      border-right: 1px solid var(--border);
+      position: fixed;
+      top: 0; bottom: 0; left: 0;
+      padding: 22px 16px;
+      display: flex;
+      flex-direction: column;
+      z-index: 100;
+      backdrop-filter: blur(20px);
+      box-shadow: 10px 0 35px rgba(0, 0, 0, 0.85);
+    }
+
+    .brand-box {
+      border: 1px solid var(--border-red);
+      background: rgba(255, 42, 95, 0.08);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 16px;
+      position: relative;
+    }
+
+    .brand-tag {
+      font-size: 0.65rem;
+      letter-spacing: 0.16em;
+      color: var(--red);
+      font-weight: 800;
+      font-family: var(--font-mono);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .live-pulse {
+      width: 8px;
+      height: 8px;
+      background: var(--red);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--red);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.3; transform: scale(0.8); }
+    }
+
+    .brand-title {
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: #fff;
+      margin-top: 4px;
+      letter-spacing: 0.05em;
+    }
+
+    /* MÓDULO DE CONTROL DE AUDIO */
+    .audio-toggle-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(0, 242, 254, 0.04);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+
+    .audio-btn {
+      background: transparent;
+      border: 1px solid var(--cyan);
+      color: var(--cyan);
+      font-size: 0.7rem;
+      padding: 3px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: var(--font-mono);
+      transition: all 0.2s ease;
+    }
+
+    .audio-btn.muted {
+      border-color: var(--muted);
+      color: var(--muted);
+    }
+
+    .nav-label {
+      color: var(--cyan);
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      margin-bottom: 10px;
+      padding-left: 8px;
+      font-weight: 700;
+      font-family: var(--font-mono);
+    }
+
+    .nav-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .nav-btn {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      color: var(--muted);
+      padding: 11px 13px;
+      border-radius: 8px;
+      font-size: 0.86rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .nav-btn:hover {
+      background: rgba(0, 242, 254, 0.08);
+      border-color: var(--cyan);
+      color: #fff;
+      transform: translateX(4px);
+    }
+
+    .nav-btn.active {
+      background: linear-gradient(90deg, rgba(255, 42, 95, 0.22), rgba(255, 42, 95, 0.05));
+      border-color: var(--red);
+      color: #fff;
+      box-shadow: 0 0 15px var(--red-glow);
+    }
+
+    /* CONTENEDOR PRINCIPAL */
+    main.viewport {
+      margin-left: 330px;
+      flex: 1;
+      padding: 40px;
+      max-width: 1080px;
+      position: relative;
+      z-index: 10;
+    }
+
+    .sheet {
+      display: none;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 36px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.65);
+    }
+
+    .sheet.active {
+      display: block;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .top-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 42, 95, 0.15);
+      border: 1px solid var(--red);
+      color: var(--red);
+      font-size: 0.72rem;
+      font-weight: 800;
+      padding: 5px 12px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 18px;
+      font-family: var(--font-mono);
+    }
+
+    h1.title {
+      font-size: 1.95rem;
+      line-height: 1.3;
+      margin-bottom: 12px;
+      letter-spacing: -0.01em;
+      min-height: 52px;
+    }
+
+    p.subtitle {
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1.6;
+      margin-bottom: 28px;
+    }
+
+    .cover-grid {
+      display: grid;
+      grid-template-columns: 1fr 260px;
+      gap: 28px;
+      align-items: start;
+    }
+
+    .author-card {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 22px;
+      margin-bottom: 20px;
+    }
+
+    .author-card h3 {
+      font-size: 0.88rem;
+      color: var(--cyan);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 12px;
+      font-family: var(--font-mono);
+    }
+
+    .author-field {
+      margin-bottom: 10px;
+    }
+
+    .author-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+      font-family: var(--font-mono);
+      display: block;
+    }
+
+    .author-name {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 0.02em;
+    }
+
+    .author-role {
+      color: var(--cyan);
+      font-size: 0.88rem;
+      line-height: 1.5;
+      font-weight: 500;
+    }
+
+    .author-unit {
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.5;
+      margin-top: 4px;
+    }
+
+    .extract-box {
+      border-left: 3px solid var(--red);
+      background: rgba(255, 42, 95, 0.03);
+      padding: 16px 20px;
+      border-radius: 0 10px 10px 0;
+    }
+
+    .extract-box h4 {
+      font-size: 0.9rem;
+      color: #fff;
+      margin-bottom: 8px;
+      font-family: var(--font-mono);
+    }
+
+    .extract-box p {
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.6;
+      font-style: italic;
+    }
+
+    /* MÓDULO QR & RADAR TÁCTICO */
+    .qr-hud {
+      background: #090e1a;
+      border: 1px solid var(--cyan);
+      border-radius: 14px;
+      padding: 18px;
+      text-align: center;
+      position: relative;
+      box-shadow: 0 0 25px rgba(0, 242, 254, 0.15);
+    }
+
+    .qr-image-wrapper {
+      background: #ffffff;
+      padding: 10px;
+      border-radius: 8px;
+      display: inline-block;
+    }
+
+    .qr-image-wrapper img {
+      width: 160px;
+      height: 160px;
+      display: block;
+    }
+
+    .qr-status {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--cyan);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-top: 12px;
+      display: block;
+      font-family: var(--font-mono);
+    }
+
+    /* BOTÓN ATLAS DENTRO DE LA PORTADA */
+    .atlas-launch-btn {
+      width: 100%;
+      margin-top: 14px;
+      background: rgba(0, 242, 254, 0.08);
+      border: 1px solid var(--cyan);
+      color: var(--cyan);
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.25s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .atlas-launch-btn:hover {
+      background: var(--cyan);
+      color: #030611;
+      box-shadow: 0 0 15px var(--cyan-glow);
+    }
+
+    /* SENSOR BIOMÉTRICO INTERACTIVO DE HUELLA DACTILAR */
+    .fingerprint-panel {
+      margin-top: 18px;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      text-align: center;
+    }
+
+    .fingerprint-btn {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      border: 2px solid var(--cyan);
+      background: rgba(0, 242, 254, 0.05);
+      margin: 8px auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+      user-select: none;
+    }
+
+    .fingerprint-btn svg {
+      width: 36px;
+      height: 36px;
+      stroke: var(--cyan);
+      transition: all 0.3s ease;
+    }
+
+    .fingerprint-btn.scanning {
+      border-color: var(--red);
+      box-shadow: 0 0 20px var(--red-glow);
+    }
+
+    .fingerprint-btn.scanning svg {
+      stroke: var(--red);
+    }
+
+    .fingerprint-btn.granted {
+      border-color: var(--green);
+      box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+    }
+
+    .fingerprint-btn.granted svg {
+      stroke: var(--green);
+    }
+
+    .fp-laser {
+      position: absolute;
+      top: -100%;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: var(--red);
+      box-shadow: 0 0 10px var(--red);
+    }
+
+    .fingerprint-btn.scanning .fp-laser {
+      animation: scanFinger 0.8s infinite alternate ease-in-out;
+    }
+
+    @keyframes scanFinger {
+      from { top: 0%; }
+      to { top: 95%; }
+    }
+
+    .fp-text {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+    }
+
+    /* ESTILOS DE TEXTO */
+    .sheet h2 {
+      font-size: 1.45rem;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sheet p {
+      color: var(--muted);
+      line-height: 1.8;
+      font-size: 0.96rem;
+      margin-bottom: 18px;
+    }
+
+    .sheet ul {
+      margin-left: 20px;
+      margin-bottom: 20px;
+      color: var(--muted);
+      line-height: 1.8;
+      font-size: 0.95rem;
+    }
+
+    .sheet li {
+      margin-bottom: 8px;
+    }
+
+    .alert-panel {
+      background: rgba(0, 242, 254, 0.05);
+      border-left: 3px solid var(--cyan);
+      padding: 16px 20px;
+      border-radius: 0 10px 10px 0;
+      margin: 24px 0;
+    }
+
+    .alert-panel h4 {
+      color: var(--cyan);
+      font-size: 0.92rem;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-family: var(--font-mono);
+    }
+
+    .alert-panel p {
+      margin-bottom: 0;
+      font-size: 0.9rem;
+    }
+
+    /* SECCIÓN 2: ESCÁNER BIOMÉTRICO CON ESTAMPA DE IMPUGNACIÓN */
+    .biometric-scanner-frame {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      gap: 20px;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 25px 0;
+      align-items: center;
+      position: relative;
+    }
+
+    .scanner-display {
+      width: 200px;
+      height: 200px;
+      border: 2px solid var(--red);
+      border-radius: 8px;
+      position: relative;
+      overflow: hidden;
+      background: #020617;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .scanner-laser {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: var(--cyan);
+      box-shadow: 0 0 15px var(--cyan);
+      animation: scanLaser 2.2s infinite ease-in-out;
+    }
+
+    @keyframes scanLaser {
+      0% { top: 0%; opacity: 0.8; }
+      50% { top: 96%; opacity: 1; }
+      100% { top: 0%; opacity: 0.8; }
+    }
+
+    .hud-metrics {
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .hud-line {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      padding-bottom: 4px;
+    }
+
+    .hud-val-ok { color: var(--green); font-weight: 700; }
+    .hud-val-alert { color: var(--red); font-weight: 700; }
+
+    /* SELLO DE IMPUGNACIÓN INTERACTIVO */
+    .stamp-container {
+      position: absolute;
+      right: 25px;
+      top: 25px;
+      transform: rotate(-12deg);
+      border: 3px solid var(--red);
+      color: var(--red);
+      padding: 6px 14px;
+      font-family: var(--font-mono);
+      font-weight: 900;
+      font-size: 0.85rem;
+      letter-spacing: 0.15em;
+      border-radius: 6px;
+      cursor: pointer;
+      text-transform: uppercase;
+      box-shadow: 0 0 15px var(--red-glow);
+      user-select: none;
+      transition: all 0.2s ease;
+    }
+
+    .stamp-container:hover {
+      transform: rotate(-8deg) scale(1.05);
+    }
+
+    /* SECCIÓN 3: GRAFO INTERACTIVO DE RED */
+    .network-container {
+      background: rgba(3, 7, 18, 0.8);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 25px 0;
+      text-align: center;
+    }
+
+    .network-title {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--cyan);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 12px;
+    }
+
+    .interactive-network svg {
+      width: 100%;
+      max-width: 650px;
+      height: 260px;
+    }
+
+    .node {
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .node:hover circle {
+      stroke: #fff;
+      stroke-width: 3px;
+      filter: drop-shadow(0 0 8px var(--cyan));
+    }
+
+    .node text {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      fill: #fff;
+      font-weight: 600;
+    }
+
+    #nodeInfoBox {
+      background: rgba(0, 0, 0, 0.6);
+      border: 1px solid var(--cyan);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.85rem;
+      color: #cbd5e1;
+      font-family: var(--font-mono);
+      min-height: 48px;
+      margin-top: 10px;
+      text-align: left;
+    }
+
+    /* SECCIÓN 4: RADAR GIRATORIO OSINT */
+    .osint-radar-wrapper {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 24px;
+      align-items: center;
+      background: rgba(2, 6, 23, 0.8);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 25px 0;
+    }
+
+    .radar-screen {
+      width: 190px;
+      height: 190px;
+      border-radius: 50%;
+      border: 2px solid var(--cyan);
+      background: radial-gradient(circle, rgba(0, 242, 254, 0.08) 0%, #030712 70%);
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 0 20px rgba(0, 242, 254, 0.2);
+    }
+
+    .radar-sweep {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: conic-gradient(from 0deg, rgba(0, 242, 254, 0.5) 0deg, transparent 60deg);
+      border-radius: 50%;
+      animation: radarRotate 4s linear infinite;
+    }
+
+    @keyframes radarRotate {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .radar-screen::before {
+      content: "";
+      position: absolute;
+      top: 50%; left: 0; width: 100%; height: 1px;
+      background: rgba(0, 242, 254, 0.25);
+    }
+
+    .radar-screen::after {
+      content: "";
+      position: absolute;
+      left: 50%; top: 0; width: 1px; height: 100%;
+      background: rgba(0, 242, 254, 0.25);
+    }
+
+    .radar-ping {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      background: var(--red);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--red);
+      animation: pingFade 2s infinite;
+    }
+
+    @keyframes pingFade {
+      0%, 100% { opacity: 0.2; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1.3); }
+    }
+
+    .stream-feed {
+      background: #020617;
+      border: 1px solid rgba(0, 242, 254, 0.2);
+      border-radius: 8px;
+      padding: 14px;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      height: 140px;
+      overflow-y: hidden;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 6px;
+    }
+
+    .feed-item {
+      color: var(--muted);
+      border-left: 2px solid var(--cyan);
+      padding-left: 8px;
+      animation: feedIn 0.3s ease;
+    }
+
+    @keyframes feedIn {
+      from { opacity: 0; transform: translateX(-10px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    .biblio-box {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 12px;
+      font-size: 0.9rem;
+      line-height: 1.6;
+      color: var(--muted);
+    }
+
+    .biblio-box strong {
+      color: #fff;
+    }
+
+    /* MODAL DE VISUALIZACIÓN EN PANTALLA COMPLETA */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(2, 6, 17, 0.92);
+      backdrop-filter: blur(12px);
+      z-index: 10000;
+      justify-content: center;
+      align-items: center;
+      padding: 24px;
+    }
+
+    .modal-frame {
+      position: relative;
+      max-width: 950px;
+      max-height: 92vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      border: 1px solid var(--cyan);
+      background: #060b19;
+      padding: 16px;
+      border-radius: 12px;
+      box-shadow: 0 0 40px rgba(0, 242, 254, 0.25);
+    }
+
+    .modal-frame img {
+      max-width: 100%;
+      max-height: 78vh;
+      object-fit: contain;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .modal-close-btn {
+      position: absolute;
+      top: -38px;
+      right: 0;
+      background: transparent;
+      border: 1px solid var(--red);
+      color: var(--red);
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 0.8rem;
+      padding: 4px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: all 0.2s ease;
+    }
+
+    .modal-close-btn:hover {
+      background: var(--red);
+      color: #fff;
+    }
+
+    .modal-caption {
+      margin-top: 12px;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      color: var(--cyan);
+      letter-spacing: 0.08em;
+    }
+
+    @media (max-width: 860px) {
+      aside.sidebar { display: none; }
+      main.viewport { margin-left: 0; padding: 20px; }
+      .cover-grid, .biometric-scanner-frame, .osint-radar-wrapper { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- RED SIGINT DE FONDO INTERACTIVA -->
+  <canvas id="sigint-bg"></canvas>
+
+  <!-- PANEL LATERAL TÁCTICO -->
+  <aside class="sidebar">
+    <div class="brand-box">
+      <div class="brand-tag">
+        <span class="live-pulse"></span>
+        EXPEDIENTE ACTIVO // CLASIFICADO
+      </div>
+      <div class="brand-title">TERMINAL PERICIAL FORENSE</div>
+    </div>
+
+    <!-- Módulo de Sonido Operativo -->
+    <div class="audio-toggle-bar">
+      <span>EFECTOS SÓNICOS HUD</span>
+      <button id="soundToggle" class="audio-btn">AUDIO: ON</button>
+    </div>
+
+    <div class="nav-label">Índice del Expediente</div>
+    <ul class="nav-list">
+      <li>
+        <button type="button" class="nav-btn active" data-target="hoja-portada">
+          <span>📋 Portada & QR</span>
+          <span>→</span>
+        </button>
+      </li>
+      <li>
+        <button type="button" class="nav-btn" data-target="hoja-contexto">
+          <span>🚨 1. Contexto Operativo</span>
+          <span>→</span>
+        </button>
+      </li>
+      <li>
+        <button type="button" class="nav-btn" data-target="hoja-modus">
+          <span>⚰️ 2. Modus Operandi</span>
+          <span>→</span>
+        </button>
+      </li>
+      <li>
+        <button type="button" class="nav-btn" data-target="hoja-identidad">
+          <span>💳 3. Identidad & Red SVG</span>
+          <span>→</span>
+        </button>
+      </li>
+      <li>
+        <button type="button" class="nav-btn" data-target="hoja-investigacion">
+          <span>🔍 4. Investigación Policial</span>
+          <span>→</span>
+        </button>
+      </li>
+      <li>
+        <button type="button" class="nav-btn" data-target="hoja-perfil">
+          <span>🧠 Pautas & Perfilación</span>
+          <span>→</span>
+        </button>
+      </li>
+      <li>
+        <button type="button" class="nav-btn" data-target="hoja-referencias">
+          <span>📚 Bibliografía (APA 7ª)</span>
+          <span>→</span>
+        </button>
+      </li>
+    </ul>
+  </aside>
+
+  <!-- VISTA PRINCIPAL -->
+  <main class="viewport">
+
+    <!-- PORTADA -->
+    <section id="hoja-portada" class="sheet active">
+      <div class="top-badge">Dictamen Pericial // Crimen Organizado</div>
+      <h1 class="title" id="cipherTitle">La Simulación de Fallecimiento del Líder Criminal: Fraude Procesal, Mutación de Identidad y Trazabilidad Forense</h1>
+      <p class="subtitle">Análisis criminológico sobre sobreseimiento judicial fraudulento, falsedad documental sistemática y desvinculación patrimonial en estructuras complejas[cite: 13].</p>
+
+      <div class="cover-grid">
+        <div>
+          <div class="author-card">
+            <h3>Ficha Técnica & Autoría</h3>
+            <div class="author-field">
+              <span class="author-label">Investigadora Principal / Perito:</span>
+              <div class="author-name">Patricia Suárez[cite: 13]</div>
+              <div class="author-role">Analista de inteligencia criminal experta en terrorismo, riesgo y redes en fuentes abiertas[cite: 13]</div>
+              <div class="author-unit">División de Perfilación Forense y Prevención de Blanqueo de Capitales (URJC)[cite: 13]</div>
+            </div>
+          </div>
+
+          <div class="extract-box">
+            <h4>Extracto Introductorio</h4>
+            <p>«La desarticulación operativa de una estructura criminal sitúa a su liderazgo en una encrucijada estratégica: la asunción del proceso penal o la ruptura definitiva con su entorno mediante la desaparición forzada fingida[cite: 13]. La simulación del propio fallecimiento representa una maniobra de distracción procesal orientada a provocar el sobreseimiento de las actuaciones (art. 130.1.1ª CP)...»[cite: 13]</p>
+          </div>
+        </div>
+
+        <div>
+          <div class="qr-hud">
+            <div class="qr-image-wrapper">
+              <!-- QR con tu enlace directo y operativo a Google Drive -->
+              <img id="qrDossierImg" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https%3A%2F%2Fdrive.google.com%2Fdrive%2Ffolders%2F1j_RFdD2P1jmQY5RNcMUab8c6pTiRuttW%3Fusp%3Ddrive_link" alt="Código QR Dossier y Atlas">
+            </div>
+            <span class="qr-status">📲 Escanear Dossier & Atlas</span>
+          </div>
+
+          <!-- BOTÓN DIRECTO PARA DESPLEGAR EL ATLAS EN PANTALLA -->
+          <button type="button" class="atlas-launch-btn" id="openAtlasBtn">
+            🗺️ Ver Atlas Cartográfico
+          </button>
+
+          <!-- SENSOR BIOMÉTRICO INTERACTIVO -->
+          <div class="fingerprint-panel">
+            <div class="fp-text">VERIFICADOR DE AUTORIZACIÓN</div>
+            <div class="fingerprint-btn" id="fpBtn" title="Mantén pulsado para verificar acceso">
+              <div class="fp-laser"></div>
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 11c0 2-1 3-2 4.5M12 7c-2.5 0-4.5 2-4.5 4.5 0 2 1 3.5 2 5M16 11c0-2-1.5-3.5-4-3.5"></path>
+                <path d="M7 11c0-2.8 2.2-5 5-5s5 2.2 5 5c0 3-1.5 5-2.5 7M4.5 11C4.5 6.9 7.9 3.5 12 3.5s7.5 3.4 7.5 7.5c0 4-2 7-3.5 9.5"></path>
+              </svg>
+            </div>
+            <div class="fp-text" id="fpStatus">MANTÉN PULSADO PARA AUTORIZAR</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 1. CONTEXTO OPERATIVO -->
+    <section id="hoja-contexto" class="sheet">
+      <h2>🚨 1. Introducción y Contexto Operativo</h2>
+      <p>La neutralización judicial de las ramas intermedias por parte de las Fuerzas y Cuerpos de Seguridad del Estado (FCSE) provoca una ruptura inmediata en la cadena de seguridad del grupo criminal[cite: 13]. Al desarticularse los escalones operativos, las vías de comunicación habituales y la red de contención logística caen, dejando al cabecilla directamente expuesto a la acción de los juzgados de instrucción[cite: 13].</p>
+
+      <p>En este escenario de aislamiento táctico, el líder percibe como inevitable su detención provisional y el inicio de medidas cautelares sobre su patrimonio[cite: 13]. Ante esto, activa de forma clandestina un protocolo de evacuación previamente planificado, cuyo objetivo central no es esconderse temporalmente, sino desvanecerse jurídicamente del procedimiento[cite: 13].</p>
+
+      <div class="alert-panel">
+        <h4>Objetivo Procesal Inmediato</h4>
+        <p>Lograr que el órgano instructor declare extinguida la responsabilidad penal por fallecimiento (art. 130.1.1ª CP) y dicte el auto de sobreseimiento libre (art. 637.3 LECrim), cancelando todas las requisitorias policiales y las órdenes internacionales de detención[cite: 13].</p>
+      </div>
+    </section>
+
+    <!-- 2. MODUS OPERANDI CON HUD Y SELLO -->
+    <section id="hoja-modus" class="sheet">
+      <h2>⚰️ 2. Modus Operandi: Mecanismos de Simulación</h2>
+      <p>Para generar una apariencia indiscutible de muerte en los registros judiciales, las cúpulas criminales recurren a dos procedimientos recurrentes[cite: 13]:</p>
+
+      <ul>
+        <li><strong>Escenario de defunción fingida sin recuperación de cuerpo:</strong> Siniestros catastróficos en aguas internacionales o accidentes aéreos en entornos remotos donde se alega la imposibilidad biológica del rescate[cite: 13].</li>
+        <li><strong>Manipulación de registros civiles por corrupción médico-legal:</strong> Partidas de defunción con apariencia legal pero ideológicamente falsas en terceros países, certificando paradas cardiorrespiratorias seguidas de cremaciones exprés[cite: 13].</li>
+      </ul>
+
+      <!-- HUD BIOMÉTRICO CON SELLO INTERACTIVO -->
+      <div class="biometric-scanner-frame">
+        <div class="stamp-container" id="judicialStamp" title="Haz clic para conmutar estado pericial">
+          SOBRESEIMIENTO IMPUGNADO
+        </div>
+
+        <div class="scanner-display">
+          <div class="scanner-laser"></div>
+          <svg width="110" height="110" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="1.2">
+            <path d="M12 2a5 5 0 0 0-5 5v3a5 5 0 0 0 10 0V7a5 5 0 0 0-5-5z"></path>
+            <path d="M4 22v-2a6 6 0 0 1 12 0v2"></path>
+            <circle cx="9" cy="8" r="1" fill="var(--cyan)"></circle>
+            <circle cx="15" cy="8" r="1" fill="var(--cyan)"></circle>
+            <path d="M10 13c1 1 3 1 4 0"></path>
+          </svg>
+        </div>
+        <div class="hud-metrics">
+          <div class="hud-line">
+            <span>OBJETIVO ANALIZADO:</span>
+            <span>CABECILLA DE RED</span>
+          </div>
+          <div class="hud-line">
+            <span>REGISTRO CIVIL:</span>
+            <span class="hud-val-alert">FALLECIDO (CERTIFICACIÓN FRAUDULENTA)</span>
+          </div>
+          <div class="hud-line">
+            <span>COTEJO BIOMÉTRICO RETINIANO:</span>
+            <span class="hud-val-ok">99.8% POSITIVO (SUJETO CON VIDA)</span>
+          </div>
+          <div class="hud-line">
+            <span>CALIFICACIÓN DELICTIVA:</span>
+            <span class="hud-val-alert">ESTAFA PROCESAL (ART. 250.1.7º CP)</span>
+          </div>
+        </div>
+      </div>
+
+      <p>Al verificarse la supervivencia, el sobreseimiento decae y se formula concurso real de delitos con <strong>falsedad continuada en documento público</strong> (art. 390 CP), <strong>estafa procesal</strong> (art. 250.1.7º CP) y agravantes de <strong>organización criminal</strong> (art. 570 bis CP)[cite: 13].</p>
+    </section>
+
+    <!-- 3. IDENTIDAD Y GRAFO DE RED -->
+    <section id="hoja-identidad" class="sheet">
+      <h2>💳 3. Construcción de Identidad Sintética y Lavado</h2>
+      <p>Un sujeto jurídicamente extinto carece de capacidad de obrar[cite: 13]. Para operar en la sombra recurre a identidades sintéticas y circuitos de desconexión patrimonial[cite: 13].</p>
+
+      <div class="network-container">
+        <div class="network-title">Esquema Operativo Forense (Haz clic en los nodos de la red)</div>
+        <div class="interactive-network">
+          <svg viewBox="0 0 600 240">
+            <line x1="120" y1="120" x2="300" y2="50" stroke="rgba(0, 242, 254, 0.4)" stroke-width="2" stroke-dasharray="4" />
+            <line x1="120" y1="120" x2="300" y2="190" stroke="rgba(255, 42, 95, 0.4)" stroke-width="2" stroke-dasharray="4" />
+            <line x1="300" y1="50" x2="480" y2="120" stroke="rgba(0, 242, 254, 0.4)" stroke-width="2" />
+            <line x1="300" y1="190" x2="480" y2="120" stroke="rgba(255, 42, 95, 0.4)" stroke-width="2" />
+
+            <g class="node" onclick="updateNodeInfo('LÍDER OCULTO: Simula el óbito para desactivar alertas judiciales pero conserva las credenciales de gestión de los recursos.')">
+              <circle cx="120" cy="120" r="32" fill="#060b19" stroke="var(--cyan)" stroke-width="2" />
+              <text x="120" y="125" text-anchor="middle">LÍDER</text>
+            </g>
+
+            <g class="node" onclick="updateNodeInfo('TESTAFERROS: Personas de paja interpuestas y mercantiles pantalla para inscribir bienes patrimoniales sin alertar a Hacienda.')">
+              <circle cx="300" cy="50" r="28" fill="#060b19" stroke="var(--amber)" stroke-width="2" />
+              <text x="300" y="54" text-anchor="middle">TESTAFERROS</text>
+            </g>
+
+            <g class="node" onclick="updateNodeInfo('CRIPTOACTIVOS: Carteras sin custodia y protocolos de mezcla (Monero) que fragmentan el rastro financiero.')">
+              <circle cx="300" cy="190" r="28" fill="#060b19" stroke="var(--red)" stroke-width="2" />
+              <text x="300" y="194" text-anchor="middle">MIXER/CRYPTO</text>
+            </g>
+
+            <g class="node" onclick="updateNodeInfo('PASAPORTE SINTÉTICO: Adquisición de documentación apócrifa para reinsertarse en el tráfico civil y bancario internacional.')">
+              <circle cx="480" cy="120" r="32" fill="#060b19" stroke="var(--green)" stroke-width="2" />
+              <text x="480" y="124" text-anchor="middle">PASAPORTE S.</text>
+            </g>
+          </svg>
+        </div>
+        <div id="nodeInfoBox">Selecciona un nodo para analizar el vector forense correspondiente.</div>
+      </div>
+
+      <div class="alert-panel">
+        <h4>Vulnerabilidad Pericial Económica</h4>
+        <p>Puesto que «un muerto no puede figurar en transacciones bancarias ordinarias», el intento de costear un tren de vida suntuoso bajo una identidad sin historial tributario hace saltar de inmediato los sistemas de PBC/FT[cite: 13].</p>
+      </div>
+    </section>
+
+    <!-- 4. INVESTIGACIÓN CON RADAR OSINT -->
+    <section id="hoja-investigacion" class="sheet">
+      <h2>🔍 4. Estrategia de Investigación Policial y Forense</h2>
+      <p>La reapertura del procedimiento exige coordinar inteligencia de fuentes abiertas (OSINT) y cooperación interestatal[cite: 13]:</p>
+
+      <!-- RADAR DINÁMICO OSINT -->
+      <div class="osint-radar-wrapper">
+        <div class="radar-screen">
+          <div class="radar-sweep"></div>
+          <div class="radar-ping" style="top: 40px; left: 110px;"></div>
+          <div class="radar-ping" style="top: 130px; left: 60px; animation-delay: 1s;"></div>
+        </div>
+        <div>
+          <h4 style="font-family: var(--font-mono); color: var(--cyan); margin-bottom: 8px; font-size: 0.88rem;">SISTEMA DE INTERCEPTACIÓN EN VIVO (SIGINT/OSINT)</h4>
+          <div class="stream-feed" id="liveFeed">
+            <div class="feed-item">[SIGINT-MON] Paquete TCP/IP cifrado transmitido desde torre satelital limítrofe...[cite: 13]</div>
+            <div class="feed-item">[INTERPOL] Solicitud de Notificación Roja en curso por fraude procesal continuado...[cite: 13]</div>
+            <div class="feed-item">[OSINT-ANALYST] Coincidencia geométrica de sombra en metadatos fotográficos...[cite: 13]</div>
+          </div>
+        </div>
+      </div>
+
+      <ul>
+        <li><strong>Vigilancia del entorno íntimo:</strong> Monitoreo de núcleos de apego para contrastar patrones de duelo incompatibles con una pérdida real[cite: 13].</li>
+        <li><strong>Trazabilidad OSINT y SOCMINT:</strong> Análisis de firmas digitales, direcciones IP, metadatos y geolocalizaciones en transmisiones encriptadas[cite: 13].</li>
+        <li><strong>Alertas de INTERPOL:</strong> Conversión inmediata de Notificación Azul a Notificación Roja (*Red Notice*) en cuanto se acredita la supervivencia física[cite: 13].</li>
+      </ul>
+    </section>
+
+    <!-- PAUTAS Y PERFILACIÓN -->
+    <section id="hoja-perfil" class="sheet">
+      <h2>🧠 Pautas Técnicas y Perfilación Conductual</h2>
+      <p>La personalidad del líder criminal suele presentar componentes de narcisismo clínico y desprecio por el orden normativo, lo que genera fallos tácticos[cite: 13]:</p>
+
+      <ul>
+        <li><strong>Pulsión de control:</strong> La incapacidad psicológica de transferir el mando supremo a subalternos termina revelando su presencia activa en las decisiones clave[cite: 13].</li>
+        <li><strong>Vínculos de apego:</strong> Las fechas conmemorativas suelen motivar comunicaciones clandestinas que rompen el silencio de radio pericial[cite: 13].</li>
+        <li><strong>Inercia consumista:</strong> La resistencia a renunciar a patrones de consumo ostentosos facilita su identificación a través de las Unidades de Inteligencia Financiera[cite: 13].</li>
+      </ul>
+    </section>
+
+    <!-- BIBLIOGRAFÍA -->
+    <section id="hoja-referencias" class="sheet">
+      <h2>📚 Bibliografía y Referencias Normativas</h2>
+      <div class="biblio-box">
+        <strong>Normativa Penal Española:</strong><br>
+        Código Penal. Ley Orgánica 10/1995, de 23 de noviembre. <em>Boletín Oficial del Estado</em>, 281, de 24 de noviembre de 1995[cite: 13].
+      </div>
+      <div class="biblio-box">
+        <strong>Tratados de Crimen Organizado:</strong><br>
+        Giménez-Salinas, A., & Requena, L. (2018). <em>Investigación del crimen organizado: Redes criminales, inteligencia y prospectiva</em>. Dykinson[cite: 13].
+      </div>
+      <div class="biblio-box">
+        <strong>Inteligencia Policial Europea:</strong><br>
+        Europol. (2023). <em>European Financial and Economic Crime Threat Assessment: The other side of the coin</em>. Publications Office of the European Union[cite: 13].
+      </div>
+      <div class="biblio-box">
+        <strong>Jurisprudencia Relevante:</strong><br>
+        Tribunal Supremo (Sala de lo Penal). Sentencia núm. 312/2016, de 14 de abril (Ponente: Cándido Conde-Pumpido Tourón)[cite: 13].
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL DE VISUALIZACIÓN DEL ATLAS CARTOGRÁFICO EN ALTA DEFINICIÓN -->
+  <div id="modalAtlas" class="modal-overlay">
+    <div class="modal-frame">
+      <button type="button" class="modal-close-btn" id="closeAtlasBtn">✕ CERRAR</button>
+      <img src="Atlas_simulación_fallecido.png" alt="Atlas de la Muerte Simulada">
+      <div class="modal-caption">ATLAS DE LA MUERTE SIMULADA // ANÁLISIS DE IDENTIDAD, PATRIMONIO Y REDES FORENSES</div>
+    </div>
+  </div>
+
+  <script>
+    // 1. SISTEMA DE AUDIO TÁCTICO INTEGRADO (Web Audio API)
+    let soundEnabled = true;
+    const soundToggle = document.getElementById("soundToggle");
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    soundToggle.addEventListener("click", () => {
+      soundEnabled = !soundEnabled;
+      if (soundEnabled) {
+        soundToggle.textContent = "AUDIO: ON";
+        soundToggle.classList.remove("muted");
+      } else {
+        soundToggle.textContent = "AUDIO: OFF";
+        soundToggle.classList.add("muted");
+      }
+    });
+
+    function playAudioTone(freq1, freq2, duration, type = "sine") {
+      if (!soundEnabled) return;
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq1, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(freq2, audioCtx.currentTime + duration);
+      gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration);
+    }
+
+    function playNavClick() {
+      playAudioTone(800, 300, 0.06, "triangle");
+    }
+
+    function playAccessGranted() {
+      playAudioTone(440, 880, 0.18, "sine");
+    }
+
+    // 2. NAVEGACIÓN ENTRE HOJAS
+    const navButtons = document.querySelectorAll(".nav-btn");
+    const sheets = document.querySelectorAll(".sheet");
+
+    navButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        playNavClick();
+        const targetId = btn.getAttribute("data-target");
+
+        sheets.forEach(sheet => sheet.classList.remove("active"));
+        navButtons.forEach(b => b.classList.remove("active"));
+
+        const targetSheet = document.getElementById(targetId);
+        if (targetSheet) {
+          targetSheet.classList.add("active");
+          btn.classList.add("active");
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+      });
+    });
+
+    // 3. EFECTO DE TEXTO CIFRADO EN EL TÍTULO (CYPHER DECODING)
+    const titleElem = document.getElementById("cipherTitle");
+    const originalText = titleElem.innerText;
+    const cipherChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789//--_#";
+    let iterations = 0;
+
+    function runCipherEffect() {
+      const interval = setInterval(() => {
+        titleElem.innerText = originalText
+          .split("")
+          .map((char, index) => {
+            if (index < iterations) return originalText[index];
+            if (char === " ") return " ";
+            return cipherChars[Math.floor(Math.random() * cipherChars.length)];
+          })
+          .join("");
+
+        if (iterations >= originalText.length) {
+          clearInterval(interval);
+        }
+        iterations += 2;
+      }, 20);
+    }
+    runCipherEffect();
+
+    // 4. ESCÁNER DE HUELLA DACTILAR
+    const fpBtn = document.getElementById("fpBtn");
+    const fpStatus = document.getElementById("fpStatus");
+    let scanTimer = null;
+
+    function startScan() {
+      fpBtn.classList.add("scanning");
+      fpStatus.innerText = "COTEJANDO REGISTROS BIOMÉTRICOS...";
+      fpStatus.style.color = "var(--cyan)";
+      playAudioTone(300, 600, 0.3, "sawtooth");
+
+      scanTimer = setTimeout(() => {
+        fpBtn.classList.remove("scanning");
+        fpBtn.classList.add("granted");
+        fpStatus.innerText = "ACCESO PERICIAL AUTORIZADO // SUÁREZ, P.";
+        fpStatus.style.color = "var(--green)";
+        playAccessGranted();
+      }, 1400);
+    }
+
+    function cancelScan() {
+      if (!fpBtn.classList.contains("granted")) {
+        clearTimeout(scanTimer);
+        fpBtn.classList.remove("scanning");
+        fpStatus.innerText = "MANTÉN PULSADO PARA AUTORIZAR";
+        fpStatus.style.color = "var(--muted)";
+      }
+    }
+
+    fpBtn.addEventListener("mousedown", startScan);
+    fpBtn.addEventListener("mouseup", cancelScan);
+    fpBtn.addEventListener("mouseleave", cancelScan);
+    fpBtn.addEventListener("touchstart", (e) => { e.preventDefault(); startScan(); });
+    fpBtn.addEventListener("touchend", cancelScan);
+
+    // 5. SELLO JUDICIAL INTERACTIVO
+    const judicialStamp = document.getElementById("judicialStamp");
+    judicialStamp.addEventListener("click", () => {
+      playAudioTone(200, 100, 0.1, "square");
+      if (judicialStamp.innerText.includes("IMPUGNADO")) {
+        judicialStamp.innerText = "REAPERTURA PROCESAL CONFIRMADA";
+        judicialStamp.style.borderColor = "var(--green)";
+        judicialStamp.style.color = "var(--green)";
+        judicialStamp.style.boxShadow = "0 0 15px rgba(16, 185, 129, 0.4)";
+      } else {
+        judicialStamp.innerText = "SOBRESEIMIENTO IMPUGNADO";
+        judicialStamp.style.borderColor = "var(--red)";
+        judicialStamp.style.color = "var(--red)";
+        judicialStamp.style.boxShadow = "0 0 15px var(--red-glow)";
+      }
+    });
+
+    // 6. ACTUALIZADOR DE RED INTERACTIVA
+    function updateNodeInfo(text) {
+      playNavClick();
+      const box = document.getElementById("nodeInfoBox");
+      box.style.opacity = '0.3';
+      setTimeout(() => {
+        box.innerText = text;
+        box.style.opacity = '1';
+      }, 120);
+    }
+
+    // 7. CONTROL DEL MODAL DEL ATLAS
+    const modalAtlas = document.getElementById("modalAtlas");
+    const openAtlasBtn = document.getElementById("openAtlasBtn");
+    const closeAtlasBtn = document.getElementById("closeAtlasBtn");
+
+    openAtlasBtn.addEventListener("click", () => {
+      playAudioTone(600, 900, 0.1, "sine");
+      modalAtlas.style.display = "flex";
+    });
+
+    closeAtlasBtn.addEventListener("click", () => {
+      modalAtlas.style.display = "none";
+    });
+
+    modalAtlas.addEventListener("click", (e) => {
+      if (e.target === modalAtlas) {
+        modalAtlas.style.display = "none";
+      }
+    });
+
+    // 8. FONDO CANVAS (TRÁFICO NEURONAL Y NODOS)
+    const canvas = document.getElementById("sigint-bg");
+    const ctx = canvas.getContext("2d");
+
+    let width = canvas.width = window.innerWidth;
+    let height = canvas.height = window.innerHeight;
+
+    window.addEventListener("resize", () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    });
+
+    const dots = Array.from({ length: 42 }, () => ({
+      x: Math.random() * width,
+      y: Math.random() * height,
+      vx: (Math.random() - 0.5) * 0.6,
+      vy: (Math.random() - 0.5) * 0.6,
+      radius: Math.random() * 2 + 1
+    }));
+
+    function drawNetwork() {
+      ctx.clearRect(0, 0, width, height);
+
+      for (let i = 0; i < dots.length; i++) {
+        for (let j = i + 1; j < dots.length; j++) {
+          const dx = dots[i].x - dots[j].x;
+          const dy = dots[i].y - dots[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < 130) {
+            ctx.strokeStyle = `rgba(0, 242, 254, ${0.16 * (1 - dist / 130)})`;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(dots[i].x, dots[i].y);
+            ctx.lineTo(dots[j].x, dots[j].y);
+            ctx.stroke();
+          }
+        }
+      }
+
+      dots.forEach(dot => {
+        dot.x += dot.vx;
+        dot.y += dot.vy;
+
+        if (dot.x < 0 || dot.x > width) dot.vx *= -1;
+        if (dot.y < 0 || dot.y > height) dot.vy *= -1;
+
+        ctx.fillStyle = "rgba(0, 242, 254, 0.7)";
+        ctx.beginPath();
+        ctx.arc(dot.x, dot.y, dot.radius, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      requestAnimationFrame(drawNetwork);
+    }
+    drawNetwork();
+
+    // 9. GENERADOR DE INTELIGENCIA OSINT EN TIEMPO REAL
+    const liveFeed = document.getElementById("liveFeed");
+    const osintEvents = [
+      "[SOCMINT] Monitorización de redes sociales de círculos de apego...",
+      "[FIU-PBC] Alerta sobre transferencias fraccionadas hacia cuentas offshore...",
+      "[GEOINT] Señal emitida cerca de muelle con bandera de conveniencia...",
+      "[INTERPOL] Cotejo biométrico de pasajero en vuelo comercial intercontinental..."
+    ];
+
+    setInterval(() => {
+      const eventText = osintEvents[Math.floor(Math.random() * osintEvents.length)];
+      const item = document.createElement("div");
+      item.className = "feed-item";
+      item.textContent = `${new Date().toLocaleTimeString()} ${eventText}`;
+      liveFeed.prepend(item);
+      if (liveFeed.children.length > 5) {
+        liveFeed.removeChild(liveFeed.lastChild);
+      }
+    }, 4000);
+  </script>
+</body>
+</html>
